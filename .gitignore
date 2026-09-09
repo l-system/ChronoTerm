@@ -1,0 +1,24 @@
+# Build output
+bin/
+obj/
+publish/
+*.user
+
+# User-specific files
+.vs/
+.vscode/
+*.suo
+
+# Rider
+.idea/
+*.sln.iml
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# AUR package build artifacts (built locally via makepkg, not committed)
+aur/pkg/
+aur/src/
+aur/*.pkg.tar.*
+aur/*.log
