@@ -1,0 +1,70 @@
+window:
+  width: 2880
+  height: 1620
+  hide_titlebar: true
+  corner_radius: 16.0
+  padding:
+    top: 20
+    bottom: 20
+    left: 20
+    right: 20
+terminal:
+  write_speed: 8192
+  rows: 25
+  cols: 78
+font:
+  path: /usr/share/fonts/TTF/DejaVuSansMono.ttf
+  size: 32
+  char_spacing: 1.0
+  line_spacing: 1.0
+  last_directory: ''
+colors:
+  background:
+  - 0.0
+  - 0.0
+  - 0.0
+  - 0.5
+  text:
+  - 1.0
+  - 0.0
+  - 1.0
+  - 1.0
+  glow:
+  - 0.5
+  - 0.0
+  - 1.0
+  - 1.0
+  selection:
+  - 0.0
+  - 1.0
+  - 1.0
+  - 1.0
+cursor:
+  shape: '0x2588'
+  blink: true
+scrollbar:
+  mode: auto
+effects:
+  glow:
+    intensity: 3.0
+    spread: 1.0
+  vignette:
+    enabled: false
+    strength: 0.1
+  scanlines:
+    enabled: true
+    intensity: 0.5
+    frequency: 1.5
+  curvature:
+    enabled: false
+    amount: 0.02
+  burn_in:
+    enabled: true
+    intensity: 0.2
+    build: 0.2
+    fade_time: 1.0
+    tint:
+    - 0.0
+    - 0.0
+    - 0.0
+    - 0.5
