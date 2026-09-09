@@ -30,21 +30,23 @@ screen curvature, phosphor burn-in).
   if unavailable)
 - `setsid` (part of `util-linux`, present on essentially every Linux
   install) — used to give the spawned shell a proper controlling terminal
-- GLFW (`libglfw.so.3`) — either installed system-wide (the AUR package
-  depends on it) or shipped alongside a self-contained build (see below)
+- GLFW (`libglfw.so.3`) — either installed system-wide (required if/when
+  installed via a future AUR package) or shipped alongside a self-contained
+  build (see below)
 
 ## Installing
 
 ### Arch Linux (AUR)
 
-```bash
-paru -S chronoterm
-# or
-yay -S chronoterm
-```
+Not published yet. `aur/PKGBUILD` is ready to go, but it points at a tagged
+GitHub release tarball that doesn't exist yet — see the maintainer notes
+inside `aur/PKGBUILD` for what's left before it can be submitted. Once it's
+live on the AUR this section will have the real `paru -S chronoterm` /
+`yay -S chronoterm` instructions.
 
-See [`aur/PKGBUILD`](aur/PKGBUILD) if you'd rather build it yourself without
-an AUR helper.
+In the meantime, `aur/PKGBUILD` can still be built and installed locally
+by hand (it just needs a real source tarball + checksum filled in first —
+see `aur/PKGBUILD`'s comments), or use one of the options below.
 
 ### Building from source
 
@@ -52,7 +54,7 @@ Requires the [.NET SDK](https://dotnet.microsoft.com/download) (the version
 in [`global.json`](global.json) or newer).
 
 ```bash
-git clone https://github.com/<you>/chronoterm.git
+git clone https://github.com/l-system/chronoterm.git
 cd chronoterm
 dotnet build -c Release
 dotnet run -c Release --project ChronoTerm

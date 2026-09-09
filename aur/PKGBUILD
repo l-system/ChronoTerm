@@ -4,7 +4,7 @@ pkgver=1.0.0
 pkgrel=1
 pkgdesc="A GPU-rendered, configurable terminal emulator"
 arch=('x86_64')
-url="https://github.com/<you>/chronoterm"
+url="https://github.com/l-system/chronoterm"
 license=('MIT')
 
 # Framework-dependent build (NOT self-contained) — deliberately depends on
@@ -23,7 +23,7 @@ license=('MIT')
 depends=('dotnet-runtime' 'glfw' 'fontconfig' 'util-linux')
 makedepends=('dotnet-sdk')
 
-source=("$pkgname-$pkgver.tar.gz::https://github.com/<you>/chronoterm/archive/refs/tags/v$pkgver.tar.gz")
+source=("$pkgname-$pkgver.tar.gz::https://github.com/l-system/chronoterm/archive/refs/tags/v$pkgver.tar.gz")
 # Fill this in with `updpkgsums` after downloading the real tarball — a
 # placeholder here will make makepkg refuse to build, which is intentional;
 # don't skip integrity checking for a source tarball (SKIP is only
