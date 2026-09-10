@@ -53,4 +53,14 @@ package() {
         install -Dm644 aur/chronoterm.desktop \
             "$pkgdir/usr/share/applications/chronoterm.desktop"
     fi
+
+    # The window/taskbar icon is embedded in the binary itself (see
+    # ChronoTerm.csproj's EmbeddedResource) and needs no install step — this
+    # copy is purely for the .desktop launcher above, which resolves
+    # Icon=chronoterm through the freedesktop icon theme search path, not
+    # from inside the assembly.
+    if [ -f assets/icon.png ]; then
+        install -Dm644 assets/icon.png \
+            "$pkgdir/usr/share/icons/hicolor/128x128/apps/chronoterm.png"
+    fi
 }

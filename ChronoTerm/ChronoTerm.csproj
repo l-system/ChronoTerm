@@ -34,9 +34,22 @@
         <PackageReference Include="YamlDotNet" Version="18.1.0" />
     </ItemGroup>
 
+    <!-- Embedded (not copied as a loose output file) so the window/taskbar
+         icon works identically regardless of how the app is run — from
+         source, a self-contained publish, or the AUR's framework-dependent
+         install layout — with no path lookups relative to the executable
+         that could break depending on the working directory. The desktop
+         entry's icon (aur/chronoterm.desktop) is a separate copy installed
+         to the standard hicolor theme path by aur/PKGBUILD — freedesktop
+         icon theme lookup doesn't read from inside an assembly, so that one
+         can't be unified with this. -->
+    <ItemGroup>
+        <EmbeddedResource Include="../assets/icon.png" LogicalName="icon.png" />
+    </ItemGroup>
+
     <!-- Only kicks in when a publish invocation explicitly passes
          -p:SelfContained=true (e.g. `dotnet publish -c Release -r linux-x64
-         --self-contained true`, per the GitHub Releases build instructions in
+         -p:SelfContained=true`, per the GitHub Releases build instructions in
          README.md) — NOT for the AUR package (aur/PKGBUILD), which deliberately
          builds framework-dependent against the distro's dotnet-runtime package
          instead of bundling one. RuntimeIdentifier is deliberately left unset
@@ -45,11 +58,20 @@
     <PropertyGroup Condition="'$(Configuration)'=='Release' And '$(SelfContained)'=='true'">
         <PublishSingleFile>true</PublishSingleFile>
         <PublishReadyToRun>true</PublishReadyToRun>
-        <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+        <!-- Deliberately NOT setting IncludeNativeLibrariesForSelfExtract:
+             that property pulls native libraries OUT of being loose files
+             next to the exe and INTO the single-file bundle (self-extracted
+             to a temp dir at runtime). Silk.NET's GLFW loader does its own
+             manual native-library resolution rather than going through that
+             self-extraction path, so once libglfw.so.3 is folded into the
+             bundle it can no longer be found at all — this property caused
+             exactly that regression when it was here. Leaving this unset
+             (defaults to false) keeps libglfw.so.3 as the loose file next to
+             ChronoTerm that Silk.NET actually expects. -->
         <!-- Folds debug symbols into the binary itself instead of a separate
              .pdb, so a self-contained publish is exactly two files:
              ChronoTerm and libglfw.so.3 (which can't be embedded — see
-             README.md's note on Silk.NET's native GLFW loading). -->
+             the note above). -->
         <DebugType>embedded</DebugType>
     </PropertyGroup>
 

@@ -1,5 +1,7 @@
 # ChronoTerm
 
+<img src="assets/icon.png" alt="ChronoTerm icon" width="96" height="96" align="right" />
+
 A GPU-rendered, fully configurable terminal emulator for Linux, built on
 [Silk.NET](https://github.com/dotnet/Silk.NET) (OpenGL + GLFW) and .NET.
 
@@ -35,6 +37,18 @@ screen curvature, phosphor burn-in).
   build (see below)
 
 ## Installing
+
+### Arch Linux (AUR)
+
+Not published yet. `aur/PKGBUILD` is ready to go, but it points at a tagged
+GitHub release tarball that doesn't exist yet — see the maintainer notes
+inside `aur/PKGBUILD` for what's left before it can be submitted. Once it's
+live on the AUR this section will have the real `paru -S chronoterm` /
+`yay -S chronoterm` instructions.
+
+In the meantime, `aur/PKGBUILD` can still be built and installed locally
+by hand (it just needs a real source tarball + checksum filled in first —
+see `aur/PKGBUILD`'s comments), or use one of the options below.
 
 ### Building from source
 

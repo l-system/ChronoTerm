@@ -3,6 +3,6 @@ Type=Application
 Name=ChronoTerm
 Comment=A GPU-rendered, configurable terminal emulator
 Exec=chronoterm
-Icon=utilities-terminal
+Icon=chronoterm
 Terminal=false
 Categories=System;TerminalEmulator;

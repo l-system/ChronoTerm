@@ -3,10 +3,13 @@ using ChronoTerm.Input;
 using ChronoTerm.Pty;
 using ChronoTerm.Rendering;
 using ChronoTerm.Terminal;
+using Silk.NET.Core;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace ChronoTerm.App;
 
@@ -163,6 +166,33 @@ public sealed class TerminalWindow : IDisposable
             });
     }
 
+    /// <summary>Sets the window/taskbar icon from the icon.png embedded as a
+    /// resource (see ChronoTerm.csproj) — not a loose file, so this works
+    /// identically whether run from source, a self-contained publish, or the
+    /// AUR's framework-dependent install layout, no matter what the current
+    /// working directory or install path happens to be. Deliberately
+    /// swallows any failure here (corrupt resource, decode error) rather than
+    /// taking the whole app down over a missing icon — same "degrade, don't
+    /// crash" philosophy as ParseCursorChar/ConfigManager.Sanitize.</summary>
+    private void SetWindowIconFromEmbeddedResource()
+    {
+        try
+        {
+            using var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream("icon.png");
+            if (stream is null) { Console.WriteLine("[app] icon.png embedded resource not found — skipping window icon"); return; }
+
+            using var image = SixLabors.ImageSharp.Image.Load<Rgba32>(stream);
+            byte[] pixels = new byte[image.Width * image.Height * 4];
+            image.CopyPixelDataTo(pixels);
+
+            _window.SetWindowIcon(new[] { new RawImage(image.Width, image.Height, pixels) });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[app] Could not set window icon: {ex.Message}");
+        }
+    }
+
     public void Run() => _window.Run();
 
     private void OnLoad()
@@ -176,6 +206,7 @@ public sealed class TerminalWindow : IDisposable
         _renderer.Resize(_window.FramebufferSize.X, _window.FramebufferSize.Y);
 
         ChronoTerm.Clipboard.Initialize(_window);
+        SetWindowIconFromEmbeddedResource();
 
         // Real glyph metrics now exist — reconcile terminal size (it was set from
         // the CellWidthPx/CellHeightPx placeholder in the constructor).
