@@ -18,6 +18,16 @@ public sealed class TerminalScreen
     public int CursorY { get; private set; }
     public bool CursorVisible { get; set; } = true;
 
+    /// <summary>DECCKM (CSI ?1h/?1l) — arrow keys send ESC O A-D instead of the
+    /// default ESC [ A-D when set. Full-screen apps commonly toggle this on
+    /// entry/exit (vim, and some shells' vi-mode line editors); without
+    /// tracking it, arrow keys would send the wrong encoding and silently do
+    /// nothing in those contexts. Per-screen like CursorVisible above, not a
+    /// single global flag, since that's the existing convention here for
+    /// terminal modes that a full-screen app toggles for its own alt-screen
+    /// session without it leaking back to the normal-screen shell prompt.</summary>
+    public bool ApplicationCursorKeys { get; set; }
+
     // DECSTBM scroll region, 0-indexed, inclusive. TUI apps (htop's split
     // panes, vim's status line) rely on this to scroll only part of the screen.
     private int _scrollTop;

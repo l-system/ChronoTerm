@@ -95,12 +95,39 @@ public sealed class LinuxPty : IPty
             throw new IOException($"ioctl(TIOCSWINSZ) failed (errno {Marshal.GetLastWin32Error()})");
     }
 
+    /// <summary>Builds the child's environment, inheriting everything from
+    /// ChronoTerm's own process EXCEPT TERM, which is forced to "xterm"
+    /// rather than passed through as-is.
+    ///
+    /// Blindly inheriting TERM is a real correctness bug, not a style
+    /// choice: TERM is how every program on the system — not just the shell,
+    /// also vim/less/tmux/htop/anything else — decides what escape sequences
+    /// are safe to send, by looking the value up in the system's terminfo
+    /// database. If ChronoTerm happened to inherit e.g. "xterm-256color"
+    /// (likely if launched from inside another terminal during development,
+    /// or wherever a desktop launcher's environment came from), programs
+    /// would assume 256-color SGR and other xterm extensions are supported —
+    /// they're not; ChronoTerm deliberately never reads per-cell color (see
+    /// VtParser's 'm' comment) and doesn't claim to be full xterm.
+    ///
+    /// "xterm" (no color suffix) is deliberately the safest honest choice
+    /// across the full range of systems ChronoTerm may need to interoperate
+    /// with (the shell list this was designed against spans Linux/BSD/AIX/
+    /// HP-UX/Solaris terminfo databases) — it's been a near-universal
+    /// terminfo entry for decades (long before 256-color conventions
+    /// existed), while still correctly declaring the things ChronoTerm DOES
+    /// support that a bare "vt100" entry would under-claim, like alt-screen
+    /// (smcup/rmcup) — see EnterAltScreen/ExitAltScreen.</summary>
     private static string?[] BuildEnvp()
     {
         var vars = Environment.GetEnvironmentVariables();
         var list = new List<string?>(vars.Count + 1);
         foreach (System.Collections.DictionaryEntry entry in vars)
+        {
+            if ((string)entry.Key == "TERM") continue; // overridden below, not inherited
             list.Add($"{entry.Key}={entry.Value}");
+        }
+        list.Add("TERM=xterm");
         list.Add(null);
         return list.ToArray();
     }

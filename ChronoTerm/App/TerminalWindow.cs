@@ -306,7 +306,7 @@ public sealed class TerminalWindow : IDisposable
             return;
         }
 
-        byte[]? bytes = KeyTranslator.TranslateKeyDown(key, _repeatingMods);
+        byte[]? bytes = KeyTranslator.TranslateKeyDown(key, _repeatingMods, _session.Screen.ApplicationCursorKeys);
         if (bytes is not null)
         {
             _pty.Input.Write(bytes, 0, bytes.Length);
@@ -406,7 +406,7 @@ public sealed class TerminalWindow : IDisposable
             // (cursor-line home/end, forwarded to the shell as usual).
         }
 
-        byte[]? bytes = KeyTranslator.TranslateKeyDown(key, mods);
+        byte[]? bytes = KeyTranslator.TranslateKeyDown(key, mods, _session.Screen.ApplicationCursorKeys);
         if (bytes is not null)
         {
             _pty.Input.Write(bytes, 0, bytes.Length);

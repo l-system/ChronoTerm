@@ -12,7 +12,12 @@ public static class KeyTranslator
 {
     /// <summary>Ctrl/Alt chords and non-printable special keys. Returns null if the
     /// key isn't one of these (caller should fall back to text input for it).</summary>
-    public static byte[]? TranslateKeyDown(Key key, KeyModifiers mods)
+    /// <param name="applicationCursorKeys">DECCKM state (CSI ?1h/?1l) of the
+    /// currently active screen — see TerminalScreen.ApplicationCursorKeys.
+    /// Only affects the four arrow keys: Home/End/PageUp/PageDown etc. aren't
+    /// governed by DECCKM in the standard sense and keep one fixed encoding
+    /// regardless (matches xterm's own behavior).</param>
+    public static byte[]? TranslateKeyDown(Key key, KeyModifiers mods, bool applicationCursorKeys = false)
     {
         bool ctrl = mods.HasFlag(KeyModifiers.Control);
         bool alt = mods.HasFlag(KeyModifiers.Alt);
@@ -57,10 +62,10 @@ public static class KeyTranslator
 
         return key switch
         {
-            Key.Up => "\x1b[A"u8.ToArray(),
-            Key.Down => "\x1b[B"u8.ToArray(),
-            Key.Right => "\x1b[C"u8.ToArray(),
-            Key.Left => "\x1b[D"u8.ToArray(),
+            Key.Up => (applicationCursorKeys ? "\x1bOA"u8 : "\x1b[A"u8).ToArray(),
+            Key.Down => (applicationCursorKeys ? "\x1bOB"u8 : "\x1b[B"u8).ToArray(),
+            Key.Right => (applicationCursorKeys ? "\x1bOC"u8 : "\x1b[C"u8).ToArray(),
+            Key.Left => (applicationCursorKeys ? "\x1bOD"u8 : "\x1b[D"u8).ToArray(),
             Key.Home => "\x1b[H"u8.ToArray(),
             Key.End => "\x1b[F"u8.ToArray(),
             Key.PageUp => "\x1b[5~"u8.ToArray(),

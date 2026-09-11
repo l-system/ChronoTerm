@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=ChronoTerm
+Comment=A GPU-rendered, configurable terminal emulator
+Exec=chronoterm
+Icon=chronoterm
+Terminal=false
+Categories=System;TerminalEmulator;

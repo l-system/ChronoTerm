@@ -16,6 +16,7 @@ public sealed class TerminalSession : IVtScreenHost
     private TerminalScreen _altScreen;
     private readonly VtParser _parser;
     private readonly object _lock = new();
+    private IPty? _pty; // set by StartReading — see WriteResponse
 
     public bool InAltScreen { get; private set; }
     public TerminalScreen Screen => InAltScreen ? _altScreen : _normalScreen;
@@ -81,6 +82,25 @@ public sealed class TerminalSession : IVtScreenHost
     /// thread picks it up via TakePendingTitle(), same poll-a-flag pattern
     /// used for shell-exit detection.</summary>
     public void SetWindowTitle(string title) => _pendingTitle = title;
+
+    /// <summary>Writes an escape-sequence reply straight back to the pty's
+    /// input side. Called synchronously from VtParser.Feed() — i.e. from the
+    /// pty-reader thread itself, same thread StartReading's loop runs on —
+    /// which is fine here: it's a distinct stream (pty.Input, not the
+    /// pty.Output that thread is busy reading from) and these replies are a
+    /// handful of bytes, not a size where partial/torn writes are a realistic
+    /// concern. _pty is only null if a query somehow arrives before
+    /// StartReading has run, which shouldn't happen since Feed() is only ever
+    /// invoked from within that same reader loop — guarded anyway since
+    /// "malformed input caused an unexpected code path" is exactly the kind
+    /// of thing worth not crashing over.</summary>
+    public void WriteResponse(ReadOnlySpan<byte> bytes)
+    {
+        var pty = _pty;
+        if (pty is null) return;
+        pty.Input.Write(bytes);
+        pty.Input.Flush();
+    }
 
     /// <summary>Call once per frame from the render thread. Returns null if
     /// no title change is pending.</summary>
@@ -204,6 +224,7 @@ public sealed class TerminalSession : IVtScreenHost
     /// the EIO case into just a log line with nothing acting on it.</param>
     public Thread StartReading(IPty pty, Action<Exception>? onError = null, Action? onExit = null)
     {
+        _pty = pty;
         var thread = new Thread(() =>
         {
             var buffer = new byte[4096];

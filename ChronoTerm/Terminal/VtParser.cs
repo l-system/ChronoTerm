@@ -8,6 +8,18 @@ public interface IVtScreenHost
     void EnterAltScreen();
     void ExitAltScreen();
     void SetWindowTitle(string title); // OSC 0/1/2
+
+    /// <summary>Writes an escape-sequence reply back to the pty's input side —
+    /// used for the handful of queries a well-behaved terminal is expected to
+    /// actually answer (Primary Device Attributes, Device Status Report,
+    /// Cursor Position Report). Without this, nothing ever answered any of
+    /// them: fish (and other programs that probe terminal capabilities on
+    /// startup) would send a DA1 query and then sit waiting for a reply that
+    /// never comes, hanging for its own timeout before giving up — bash
+    /// happens not to probe this by default, which is why the same binary
+    /// looks fine under one shell and stalls for several seconds under
+    /// another.</summary>
+    void WriteResponse(ReadOnlySpan<byte> bytes);
 }
 
 /// <summary>
@@ -184,17 +196,20 @@ public sealed class VtParser
         if (_privateMarker)
         {
             // Only the handful of private modes ChronoTerm actually needs:
-            // alt-screen (1049/47) and cursor visibility (25).
+            // alt-screen (1049/47), cursor visibility (25), and application
+            // cursor keys (1 — DECCKM).
             int mode = P(0);
             if (c == 'h') // set
             {
                 if (mode is 1049 or 47) _host.EnterAltScreen();
                 else if (mode == 25) screen.CursorVisible = true;
+                else if (mode == 1) screen.ApplicationCursorKeys = true;
             }
             else if (c == 'l') // reset
             {
                 if (mode is 1049 or 47) _host.ExitAltScreen();
                 else if (mode == 25) screen.CursorVisible = false;
+                else if (mode == 1) screen.ApplicationCursorKeys = false;
             }
         }
         else
@@ -222,6 +237,22 @@ public sealed class VtParser
                     break;
                 // 'm' (SGR/color) intentionally not handled — see TerminalScreen
                 // doc comment; ChronoTerm never reads per-cell color.
+
+                // Primary Device Attributes (CSI c / CSI 0 c) — "what are you?"
+                // "?1;2c" is the classic xterm-family answer (VT100 + Advanced
+                // Video Option); it's less about literal accuracy and more
+                // about being A recognized, well-formed answer so callers
+                // asking "does anything answer at all?" get a prompt yes.
+                case 'c': _host.WriteResponse("\x1b[?1;2c"u8); break;
+
+                // Device Status Report. Ps=5 ("are you OK?") -> "yes" (0n).
+                // Ps=6 (Cursor Position Report) -> actual 1-based row;col,
+                // which is why this needs to happen here rather than as a
+                // fire-and-forget constant like the other two.
+                case 'n':
+                    if (P(0) == 5) _host.WriteResponse("\x1b[0n"u8);
+                    else if (P(0) == 6) _host.WriteResponse(Encoding.ASCII.GetBytes($"\x1b[{screen.CursorY + 1};{screen.CursorX + 1}R"));
+                    break;
             }
         }
 
