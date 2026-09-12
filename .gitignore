@@ -18,7 +18,4 @@ publish/
 Thumbs.db
 
 # AUR package build artifacts (built locally via makepkg, not committed)
-aur/pkg/
-aur/src/
-aur/*.pkg.tar.*
-aur/*.log
+aur/

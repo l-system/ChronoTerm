@@ -1,6 +1,6 @@
 window:
-  width: 1600
-  height: 1000
+  width: 1024
+  height: 768
   hide_titlebar: true
   corner_radius: 128.0
   padding:

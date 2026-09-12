@@ -1,6 +1,6 @@
 window:
-  width: 2880
-  height: 1620
+  width: 1024
+  height: 768
   hide_titlebar: true
   corner_radius: 16.0
   padding:
