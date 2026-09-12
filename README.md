@@ -5,11 +5,11 @@
 A GPU-rendered, fully configurable terminal emulator for Linux, built on
 [Silk.NET](https://github.com/dotnet/Silk.NET) (OpenGL + GLFW) and .NET.
 
-Every visual aspect is configurable from within the app itself — no need to
-hand-edit YAML unless you want to: fonts (with a searchable system-font
+Many visual aspects are configurable from within the app using the right mouse button,
+no need to hand-edit YAML unless you want to: fonts (with a searchable system-font
 browser), colors (with per-channel alpha), cursor style, window size and
 padding, and a set of CRT-style post effects (glow, vignette, scanlines,
-screen curvature, phosphor burn-in).
+screen curvature, phosphor burn-in). Some changes may require you to close and restart ChronoTerm.
 
 ## Features
 
