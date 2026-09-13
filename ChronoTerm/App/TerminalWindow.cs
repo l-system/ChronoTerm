@@ -3,6 +3,7 @@ using ChronoTerm.Input;
 using ChronoTerm.Pty;
 using ChronoTerm.Rendering;
 using ChronoTerm.Terminal;
+using System.Runtime.InteropServices;
 using Silk.NET.Core;
 using Silk.NET.Input;
 using Silk.NET.Maths;
@@ -140,7 +141,7 @@ public sealed class TerminalWindow : IDisposable
         };
 
         _settingsOverlay = new ChronoTerm.Settings.SettingsOverlay(config, configManager,
-            onHideTitlebarChanged: hide => _window.WindowBorder = hide ? WindowBorder.Hidden : WindowBorder.Resizable,
+            onHideTitlebarChanged: hide => SetWindowBorder(hide),
             onWindowSettingsChanged: () =>
             {
                 // Called from three places now: Load Config, and directly
@@ -149,7 +150,7 @@ public sealed class TerminalWindow : IDisposable
                 // (unlike colors/effects/cursor-blink, which every render
                 // call already pulls fresh from _config), so they need this
                 // explicit nudge instead.
-                _window.WindowBorder = _config.Window.HideTitlebar ? WindowBorder.Hidden : WindowBorder.Resizable;
+                SetWindowBorder(_config.Window.HideTitlebar);
                 // Setting Size (when it actually differs) triggers GLFW's
                 // FramebufferResize callback, which already does everything
                 // else a resize needs — viewport, renderer resize, padding,
@@ -164,6 +165,101 @@ public sealed class TerminalWindow : IDisposable
                 // padding-only change still refreshes even in that case.
                 ApplyPadding();
             });
+    }
+
+    /// <summary>Sets WindowBorder AND, when hiding it, immediately reasserts
+    /// resizability — the fix for a confirmed Silk.NET behavior, not a guess:
+    /// its GLFW backend's WindowBorder.Hidden case bundles in
+    /// SetWindowAttrib(Resizable, false) as a side effect, both at initial
+    /// window creation and every time WindowBorder is set again at runtime
+    /// (checked directly against Silk.NET's GlfwWindow.cs source). GLFW's own
+    /// two hints — decorated and resizable — are independent at the native
+    /// level; this is purely a C#-side conflation.
+    ///
+    /// That side effect is what breaks KWin's Meta+Arrow quick-tile the
+    /// moment the titlebar is hidden: quick-tile fundamentally needs to
+    /// resize the window, and a window that has declared itself non-
+    /// resizable via WM_NORMAL_HINTS (min size == max size) is correctly
+    /// refused tiling by any ICCCM-compliant window manager — this isn't a
+    /// KWin quirk after all, KWin is doing exactly what it's supposed to.
+    /// Reasserting Resizable=true immediately after undoes just that one
+    /// side effect while keeping decorations off.</summary>
+    private void SetWindowBorder(bool hideTitlebar)
+    {
+        _window.WindowBorder = hideTitlebar ? WindowBorder.Hidden : WindowBorder.Resizable;
+        if (hideTitlebar) ForceResizableViaGlfw();
+    }
+
+    /// <summary>Reaches past Silk.NET.Windowing into the raw GLFW API — via
+    /// Silk.NET.GLFW, which ChronoTerm already references directly, not raw
+    /// platform calls — since IWindow has no standalone Resizable property to
+    /// set independently of WindowBorder. Portable to whatever backend GLFW
+    /// itself supports (X11 or Wayland), unlike the X11-specific Xlib call
+    /// below, since this goes through GLFW's own cross-platform surface
+    /// rather than one specific platform's protocol. The actual GLFW call is
+    /// isolated in GlfwWindowHints (see its doc comment) rather than living
+    /// here directly — Silk.NET.GLFW's own MouseButton/KeyModifiers types
+    /// collide with ones this file already uses constantly, so a `using
+    /// Silk.NET.GLFW;` here would make both ambiguous everywhere.</summary>
+    private void ForceResizableViaGlfw() => GlfwWindowHints.ForceResizable(_window.Native?.Glfw);
+
+    // ---- Raw Xlib interop, X11 only ----
+    // Silk.NET/GLFW has no portable API for EWMH-specific hints like this one
+    // (it's an X11/Linux window-manager convention, not something GLFW's
+    // cross-platform surface models) — DeclareNormalWindowTypeOnX11 below
+    // reaches past it via IWindow.Native.X11 for exactly this one hint.
+    [DllImport("libX11.so.6")] private static extern nuint XInternAtom(nint display, string atomName, int onlyIfExists);
+    [DllImport("libX11.so.6")] private static extern int XChangeProperty(nint display, nuint window, nuint property, nuint type, int format, int mode, nuint[] data, int numElements);
+    [DllImport("libX11.so.6")] private static extern int XFlush(nint display);
+    private const int XPropModeReplace = 0;
+    private const nuint XAtomAtom = 4; // predefined X11 atom ID for the "ATOM" type itself
+
+    /// <summary>Explicitly declares this an EWMH "normal" application window
+    /// via _NET_WM_WINDOW_TYPE — a stronger, more explicit signal than
+    /// decoration presence for "this is a regular, tileable app window", not
+    /// a utility/splash/dock window.
+    ///
+    /// This exists specifically because of a known KWin behavior: KWin's
+    /// Meta+Arrow quick-tile shortcuts stop responding to windows once
+    /// decorations are removed (ChronoTerm's "hide titlebar" setting does
+    /// exactly that, via the standard _MOTIF_WM_HINTS mechanism — confirmed
+    /// against GLFW's own X11 source that this does NOT set override-redirect
+    /// or anything else that would make KWin stop managing the window
+    /// entirely, so decoration removal by itself shouldn't be the whole
+    /// story). Declaring the window type explicitly is the standards-based
+    /// thing to try; whether KWin's specific quick-tile logic actually keys
+    /// off this hint isn't something verifiable without a live KWin session
+    /// to test against, so treat this as the best available fix rather than
+    /// a confirmed one — if quick-tile is still unresponsive with the
+    /// titlebar hidden after this, the more likely explanation is that it's
+    /// a KWin limitation for undecorated windows specifically, workable
+    /// around via a KWin Window Rule rather than anything on ChronoTerm's
+    /// side.
+    ///
+    /// A no-op on Wayland (Native.X11 is null there — GLFW would be using its
+    /// Wayland backend instead, so there's nothing X11-specific to set) and
+    /// on any system without libX11 available at all; wrapped defensively
+    /// since a window-manager cosmetic hint failing is not a reason to take
+    /// the app down.</summary>
+    private void DeclareNormalWindowTypeOnX11()
+    {
+        var x11 = _window.Native?.X11;
+        if (x11 is null) return;
+
+        try
+        {
+            var (display, window) = x11.Value;
+            nuint wmWindowType = XInternAtom(display, "_NET_WM_WINDOW_TYPE", 0);
+            nuint wmWindowTypeNormal = XInternAtom(display, "_NET_WM_WINDOW_TYPE_NORMAL", 0);
+            if (wmWindowType == 0 || wmWindowTypeNormal == 0) return; // atom interning failed — nothing sensible to write
+
+            XChangeProperty(display, window, wmWindowType, XAtomAtom, 32, XPropModeReplace, new[] { wmWindowTypeNormal }, 1);
+            XFlush(display);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[app] Could not set X11 window type hint: {ex.Message}");
+        }
     }
 
     /// <summary>Sets the window/taskbar icon from the icon.png embedded as a
@@ -207,6 +303,14 @@ public sealed class TerminalWindow : IDisposable
 
         ChronoTerm.Clipboard.Initialize(_window);
         SetWindowIconFromEmbeddedResource();
+        DeclareNormalWindowTypeOnX11();
+        // Corrects the same Silk.NET side effect SetWindowBorder guards
+        // against elsewhere — but this is the one spot that side effect
+        // can't be caught before it happens: initial WindowBorder is set via
+        // WindowOptions, before any native window exists to call
+        // ForceResizableViaGlfw against. Fixing it up right after load
+        // covers a config that starts with hide_titlebar already true.
+        if (_config.Window.HideTitlebar) ForceResizableViaGlfw();
 
         // Real glyph metrics now exist — reconcile terminal size (it was set from
         // the CellWidthPx/CellHeightPx placeholder in the constructor).
